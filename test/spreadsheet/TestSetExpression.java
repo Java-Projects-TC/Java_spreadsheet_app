@@ -17,6 +17,11 @@ public class TestSetExpression {
   private final CellLocation c1 = new CellLocation("c1");
   private final CellLocation c2 = new CellLocation("c2");
   private final CellLocation d1 = new CellLocation("d1");
+  private final CellLocation d2 = new CellLocation("d2");
+  private final CellLocation e1 = new CellLocation("e1");
+  private final CellLocation e2 = new CellLocation("e2");
+  private final CellLocation e3 = new CellLocation("e3");
+  private final CellLocation f1 = new CellLocation("f1");
 
   @Test
   public void testSetExpression1() {
@@ -51,6 +56,30 @@ public class TestSetExpression {
     assertIsLoopValue(spreadsheet.getValue(b1));
     assertIsLoopValue(spreadsheet.getValue(c1));
     assertIsLoopValue(spreadsheet.getValue(d1));
+  }
+
+  // Most of my tests were done in the main method whilst using the spreadsheet.
+  @Test
+  public void testSetExpression3() {
+    Spreadsheet spreadsheet = new Spreadsheet();
+    spreadsheet.setExpression(e1, "=e2");
+    spreadsheet.setExpression(e2, "=e3");
+    spreadsheet.setExpression(e3, "=e1");
+    spreadsheet.setExpression(b1, "=c1");
+    spreadsheet.setExpression(c1, "=d1 - 1");
+    spreadsheet.setExpression(d1, "=b1 - 1");
+    spreadsheet.setExpression(d2, "=2");
+    spreadsheet.setExpression(f1, "=e2");
+    spreadsheet.recompute();
+
+    assertIsLoopValue(spreadsheet.getValue(e1));
+    assertIsLoopValue(spreadsheet.getValue(e2));
+    assertIsLoopValue(spreadsheet.getValue(e3));
+    assertIsLoopValue(spreadsheet.getValue(b1));
+    assertIsLoopValue(spreadsheet.getValue(c1));
+    assertIsLoopValue(spreadsheet.getValue(d1));
+    assertIsInvalidValue(spreadsheet.getValue(f1), "=e2");
+    assertIsDouble(spreadsheet.getValue(d2), 2);
   }
 
 }

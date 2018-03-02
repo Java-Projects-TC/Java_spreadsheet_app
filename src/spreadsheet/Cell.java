@@ -43,15 +43,23 @@ public class Cell implements Tracker<Cell>{
     setValue(new InvalidValue(expression));
 
     // check if recomputing is required, if so, do it
-    checkAndRecompute();
+    if (spreadsheet.needsRecomputing(this)) {
+      spreadsheet.addToCellsToCompute(this);
+    }
 
     // extract cell locations and convert to cells
-    // STREAMS HERE????
+    // TODO: STREAMS HERE????
     for (CellLocation location : ExpressionUtils.
         getReferencedLocations(expression)) {
       Cell cellInExp = spreadsheet.getCell(location);
+
       cellInExp.AddTracker(this);
       trackedCells.add(cellInExp);
+    }
+
+    // loop through trackedBy
+    for (Tracker<Cell> tracker : trackedBy) {
+      tracker.update(this);
     }
   }
 
@@ -67,11 +75,14 @@ public class Cell implements Tracker<Cell>{
     return location;
   }
 
+
+  // In our PPT can you also explain why changed is needed here please as I
+  // didn't use it.
   @Override
   public void update(Cell changed) {
-
     // tell spreadsheet needs recomputing
-    if (checkAndRecompute()) {
+    if (spreadsheet.needsRecomputing(this)) {
+      spreadsheet.addToCellsToCompute(this);
 
       // change value to invalid value
       this.setValue(new InvalidValue(expression));
@@ -83,9 +94,6 @@ public class Cell implements Tracker<Cell>{
     }
   }
 
-  private boolean checkAndRecompute() {
-      return spreadsheet.getCellsToCompute().add(this);
-  }
 
   private void AddTracker(Tracker<Cell> tracker) {
     trackedBy.add(tracker);
