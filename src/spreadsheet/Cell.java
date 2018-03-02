@@ -3,6 +3,7 @@ package spreadsheet;
 import common.api.CellLocation;
 import common.api.ExpressionUtils;
 import common.api.monitor.Tracker;
+import common.api.value.InvalidValue;
 import common.api.value.Value;
 import java.util.HashSet;
 import java.util.Set;
@@ -13,20 +14,16 @@ public class Cell implements Tracker<Cell>{
   private Value value;
   private final CellLocation location;
   private Spreadsheet spreadsheet;
-  private Set<Tracker<Cell>> trackedCells;
-  private Set<Tracker<Cell>> trackedBy;
+  private Set<Cell> trackedCells = new HashSet<>();
+  private Set<Tracker<Cell>> trackedBy = new HashSet<>();
 
   Cell(CellLocation location, Spreadsheet spreadsheet){
-    this("", location, spreadsheet);
-  }
-
-  Cell(String expression, CellLocation location, Spreadsheet spreadsheet){
-    this.expression = expression;
-    this.value = null;
     this.location = location;
     this.spreadsheet = spreadsheet;
-    this.trackedCells = new HashSet<>();
+  }
 
+  Set<Cell> getTracked() {
+    return trackedCells;
   }
 
   public String getExpression() {
@@ -34,7 +31,28 @@ public class Cell implements Tracker<Cell>{
   }
 
   public void setExpression(String expression) {
+    // remove all this from cells that track it since its expression changes
+    for (Cell c : trackedCells) {
+      c.removeTracker(this);
+    }
+
+    // set expression to new one...
     this.expression = expression;
+
+    // ...and value to an Invalid one
+    setValue(new InvalidValue(expression));
+
+    // check if recomputing is required, if so, do it
+    checkAndRecompute();
+
+    // extract cell locations and convert to cells
+    // STREAMS HERE????
+    for (CellLocation location : ExpressionUtils.
+        getReferencedLocations(expression)) {
+      Cell cellInExp = spreadsheet.getCell(location);
+      cellInExp.AddTracker(this);
+      trackedCells.add(cellInExp);
+    }
   }
 
   public Value getValue() {
@@ -52,29 +70,30 @@ public class Cell implements Tracker<Cell>{
   @Override
   public void update(Cell changed) {
 
-    // remove cells it was depending upon from tracker
-    trackedCells.forEach(t -> changed.removeTracker(t));
+    // tell spreadsheet needs recomputing
+    if (checkAndRecompute()) {
 
-    // change cells expression to new one
-    this.setExpression(changed.getExpression());
+      // change value to invalid value
+      this.setValue(new InvalidValue(expression));
 
-    // extract cell locations and convert to cells
-
-    // NOTE: can you use streams here? attempt later.
-    Set<CellLocation> refCellLocations = ExpressionUtils.getReferencedLocations
-        (changed.getExpression());
-    for (CellLocation refCellLocation : refCellLocations) {
-      trackedCells.add(spreadsheet.getCell(refCellLocation));
+      // Inform all Tracker<Cell> subscribed that expression has changed
+      for (Tracker<Cell> cell : trackedBy) {
+        cell.update(this);
+      }
     }
+  }
 
-    // Inform all Tracker<Cell> subscribed that expression has changed
-    for (Tracker<Cell> tracker : trackedBy) {
-      tracker.update(this);
-      spreadsheet.addToCellsToCompute((Cell) tracker); // Had to cast here??
-    }
+  private boolean checkAndRecompute() {
+      return spreadsheet.getCellsToCompute().add(this);
+  }
+
+  private void AddTracker(Tracker<Cell> tracker) {
+    trackedBy.add(tracker);
   }
 
   private void removeTracker(Tracker<Cell> tracker) {
-    trackedCells.remove(tracker);
+    trackedBy.remove(tracker);
   }
+
+
 }
