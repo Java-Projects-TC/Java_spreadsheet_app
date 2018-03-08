@@ -73,7 +73,6 @@ public class Spreadsheet implements Tabular {
     if (c.getValue() instanceof StringValue) {
       setAndCalculateCellValue(c);
     }
-    // remove c from cellsToCompute
     cellsToCompute.remove(c);
   }
 
@@ -93,7 +92,7 @@ public class Spreadsheet implements Tabular {
     boolean hasReachedStartNode = false;
     for (Cell cell : cells) {
       cellsToCompute.remove(cell);
-      if (cell == startCell) {
+      if (cell.equals(startCell)) {
         hasReachedStartNode = true;
       }
       cell.setValue(hasReachedStartNode ? LoopValue.INSTANCE :
